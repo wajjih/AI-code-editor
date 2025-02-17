@@ -669,13 +669,18 @@ $(document).ready(async function () {
     layout.registerComponent("chat", function (container, state) {
       const chatContainer = container.getElement()[0];
       chatContainer.innerHTML = `
-        <div id="chat-messages" style="height: 80%; overflow-y: auto; border-bottom: 1px solid #ccc;"></div>
+        <div id="chat-messages" style="height: 70%; overflow-y: auto; border-bottom: 1px solid #ccc;"></div>
         <div style="display: flex; padding: 5px;">
+          <select id="model-select" style="margin-right: 5px;">
+            <option value="deepseek-chat" title="DeepSeek: R1 (Free) - Fast and reliable">DeepSeek: R1 (Free)</option>
+            <option value="google/gemini-flash" title="Google: Gemini 2.0 Flash (Free) - Experimental and fast">Google: Gemini 2.0 Flash (Free)</option>
+          </select>
           <input id="chat-input" type="text" style="flex: 1; margin-right: 5px;" placeholder="Ask the AI assistant..." />
           <button id="send-message" style="padding: 5px 10px;">Send</button>
         </div>
       `;
 
+      const modelSelect = chatContainer.querySelector("#model-select");
       const chatInput = chatContainer.querySelector("#chat-input");
       const sendButton = chatContainer.querySelector("#send-message");
       const chatMessages = chatContainer.querySelector("#chat-messages");
@@ -688,9 +693,13 @@ $(document).ready(async function () {
           chatInput.value = ""; // Clear input field
           chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll
 
+          // Get the selected model
+          const selectedModel = modelSelect.value;
+          console.log("Selected model:", selectedModel);
+
           // Send message to AI assistant
-          const aiResponse = await sendMessageToAI(message);
-          chatMessages.innerHTML += `<div><b>AI:</b> ${aiResponse}</div>`;
+          const aiResponse = await sendMessageToAI(message, selectedModel);
+          chatMessages.innerHTML += `<div><b>AI (${selectedModel}):</b> ${aiResponse}</div>`;
           chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll
         }
       });
@@ -705,6 +714,41 @@ $(document).ready(async function () {
 
     layout.init();
   });
+
+  async function sendMessageToAI(message, model) {
+    try {
+      const response = await fetch("http://localhost:3000/api/ai", {
+        // Ensure the URL matches your server's route
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message, model }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error from server:", errorText);
+        return "Sorry, I couldn't process your request.";
+      }
+
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error("Error fetching AI response:", error);
+      return "Sorry, I couldn't process your request.";
+    }
+  }
+
+  // Example usage
+  async function handleUserInput() {
+    const userMessage = "Explain this code";
+    const model = "gpt-3.5-turbo"; // or 'deepseek-chat', 'google/gemini-flash'
+    const aiResponse = await sendMessageToAI(userMessage, model);
+    console.log("AI Response:", aiResponse);
+  }
+
+  handleUserInput();
 
   let superKey = "⌘";
   if (!/(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
